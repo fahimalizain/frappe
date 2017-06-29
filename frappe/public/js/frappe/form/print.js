@@ -154,35 +154,8 @@ frappe.ui.form.PrintPreview = Class.extend({
 				frappe.msgprint(__("Please enable pop-ups")); return;
 			}
 		} else {
-			// logic from microtemplate.js render_grid()
-			// not using frappe.render_grid() from microtemplate
-			// to reuse the print-preview already shown
-			var html = this.get_print_template_html();
-
-			var wnd = window.open();
-			if(!wnd) {
-				frappe.msgprint(__("Please enable pop-ups in your browser"));
-				return;
-			}
-			wnd.document.write(html);
-			wnd.document.close();
-
-			if (printit) {
-				// trigger print script
-				var elements = wnd.document.getElementsByTagName("tr");
-				var i = elements.length;
-				while (i--) {
-					if(elements[i].clientHeight>300){
-						elements[i].setAttribute("style", "page-break-inside: auto;");
-					}
-				}
-
-				setTimeout(function() {
-					wnd.focus();
-					wnd.print();
-					wnd.close();
-				}, 500);
-			}
+			// Report HTML Print
+			this.report.open_html_report(this.get_print_template_html(), printit);
 		}
 	},
 	get_preview_html: function (callback) {
@@ -202,46 +175,8 @@ frappe.ui.form.PrintPreview = Class.extend({
 				}
 			});
 		} else {
-			// Client side print
-			this.print_css = frappe.boot.print_css;
-			var selected_format = this.selected_format();
-
-			var columns = this.report.grid.getColumns();
-
-			this.print_settings = locals[":Print Settings"]["Print Settings"];
-			this.print_settings.with_letter_head = this.with_letterhead();
-			this.print_settings.landscape = this.report.html_format ? false : columns.length > 10; // microtemplate.js #110
-			if (!this.print_settings.with_letter_head)
-				this.print_settings.letter_head = null;
-
-
-			if (selected_format === "Standard" && !this.report.html_format) {
-				// rows filtered by inline_filter of slickgrid
-				var visible_idx = frappe.slickgrid_tools
-					.get_view_data(this.report.columns, this.report.dataView)
-					.map(row => row[0]).filter(idx => idx !== 'Sr No');
-
-				var data = this.report.grid.getData().getItems();
-				data = data.filter(d => visible_idx.includes(d._id));
-				var content = frappe.render_template("print_grid", {
-					title:__(this.report.report_name),
-					data:data,
-					columns:columns
-				});
-			} else {
-				var html_format = this.report.html_format;
-				if (selected_format != "Standard") {
-					var format = this.get_print_format(selected_format);
-					html_format = format && format.html;
-					this.print_css += format && format.css;
-				}
-				content = frappe.render(html_format, {
-					data: frappe.slickgrid_tools.get_filtered_items(this.report.dataView),
-					filters:this.report.get_values(),
-					report:this.report
-				});
-			}
-			callback({html: content, style: this.print_css});
+			// Report preview
+			this.report.get_preview_html(callback);
 		}
 	},
 	get_print_template_html: function() {
